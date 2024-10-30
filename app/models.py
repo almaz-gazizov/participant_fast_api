@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Column, Date, DateTime, ForeignKey, Integer, String
+    Column, Date, DateTime, Float, ForeignKey, Integer, String
 )
 
 from .database import Base
@@ -25,3 +25,5 @@ class Participant(Base):
     registration_date = Column(
         DateTime, default=datetime.now(timezone.utc)
     )
+    latitude = Column(Float)
+    longitude = Column(Float)

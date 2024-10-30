@@ -2,6 +2,7 @@ import os
 from datetime import date
 
 from fastapi import HTTPException, UploadFile
+from geopy.distance import great_circle
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -44,3 +45,10 @@ def check_daily_like_limit(
 
     participant.daily_likes_count += 1
     db.commit()
+
+
+def calculate_distance(
+    lat1: float, lon1: float, lat2: float, lon2: float
+):
+    """Вычисляет дистанцию между участниками."""
+    return great_circle((lat1, lon1), (lat2, lon2)).kilometers

@@ -1,12 +1,16 @@
+from functools import lru_cache
 from typing import List
 
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 
+from .auth import get_current_user
 from .database import get_db
 from .models import Participant
 from .schemas import ParticipantCreate, ParticipantFilter
-from .services import check_daily_like_limit, save_avatar_with_watermark
+from .services import (
+    calculate_distance, check_daily_like_limit, save_avatar_with_watermark
+)
 
 app = FastAPI()
 
@@ -69,22 +73,66 @@ def match_participant(
         return {"message": "Оценка участника сохранена."}
 
 
-@app.get("/api/list", response_model=List[Participant])
-def list_participants(
-    filter: ParticipantFilter = Depends(),
-    db: Session = Depends(get_db)
+def get_current_user_id(
+    db: Session = Depends(get_db), token: str = Depends(get_current_user)
 ):
-    query = db.query(Participant)
+    user = db.query(Participant).filter(
+        Participant.id == token.user_id
+    ).first()
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Пользователь не найден",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user.id
 
-    if filter.gender:
-        query = query.filter(Participant.gender == filter.gender)
-    if filter.name:
-        query = query.filter(Participant.name.ilike(f"%{filter.name}%"))
-    if filter.surname:
-        query = query.filter(Participant.surname.ilike(f"%{filter.surname}%"))
+
+@lru_cache(maxsize=128)
+def get_cached_participants(
+    gender: str, name: str, surname: str, current_location: tuple,
+    max_distance: float, db_session: Session
+):
+    query = db_session.query(Participant)
+
+    if gender:
+        query = query.filter(Participant.gender == gender)
+    if name:
+        query = query.filter(Participant.name.ilike(f"%{name}%"))
+    if surname:
+        query = query.filter(Participant.surname.ilike(f"%{surname}%"))
 
     # Сортировка по дате регистрации
     query = query.order_by(Participant.registration_date.desc())
-
     participants = query.all()
-    return participants
+
+    # Фильтрация участников по расстоянию
+    participants_within_distance = [
+        participant for participant in participants
+        if calculate_distance(
+            current_location[0], current_location[1],
+            participant.latitude, participant.longitude
+        ) <= max_distance
+    ]
+
+    return participants_within_distance
+
+
+@app.get("/api/list", response_model=List[Participant])
+def list_participants(
+    filter: ParticipantFilter = Depends(),
+    current_user_id: int = Depends(get_current_user_id),
+    max_distance: float = 10.0,
+    db: Session = Depends(get_db)
+):
+    # Получаем координаты текущего пользователя
+    current_user = db.query(Participant).get(current_user_id)
+    current_location = (current_user.latitude, current_user.longitude)
+
+    # Используем кэшированную функцию для получения участников
+    participants_within_distance = get_cached_participants(
+        filter.gender, filter.name, filter.surname,
+        current_location, max_distance, db
+    )
+
+    return participants_within_distance
