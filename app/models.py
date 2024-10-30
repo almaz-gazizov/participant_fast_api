@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Date, ForeignKey, Integer, String
 
 from .database import Base
 
@@ -12,3 +12,9 @@ class Participant(Base):
     email = Column(String, unique=True, index=True)
     gender = Column(String)
     avatar = Column(String)  # путь к аватарке
+    likes = Column(Integer, default=0)
+    mutual_like_id = Column(
+        Integer, ForeignKey("participants.id"), nullable=True
+    )
+    last_like_date = Column(Date, default=None)
+    daily_likes_count = Column(Integer, default=0)
