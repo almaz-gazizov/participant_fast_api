@@ -1,9 +1,11 @@
+from typing import List
+
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import Participant
-from .schemas import ParticipantCreate
+from .schemas import ParticipantCreate, ParticipantFilter
 from .services import check_daily_like_limit, save_avatar_with_watermark
 
 app = FastAPI()
@@ -65,3 +67,24 @@ def match_participant(
         current_user.mutual_like_id = id
         db.commit()
         return {"message": "Оценка участника сохранена."}
+
+
+@app.get("/api/list", response_model=List[Participant])
+def list_participants(
+    filter: ParticipantFilter = Depends(),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Participant)
+
+    if filter.gender:
+        query = query.filter(Participant.gender == filter.gender)
+    if filter.name:
+        query = query.filter(Participant.name.ilike(f"%{filter.name}%"))
+    if filter.surname:
+        query = query.filter(Participant.surname.ilike(f"%{filter.surname}%"))
+
+    # Сортировка по дате регистрации
+    query = query.order_by(Participant.registration_date.desc())
+
+    participants = query.all()
+    return participants
