@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from .auth import get_current_user
 from .database import get_db
 from .models import Participant
-from .schemas import ParticipantCreate, ParticipantFilter
+from .schemas import ParticipantCreate, ParticipantFilter, ParticipantResponse
 from .services import (
     calculate_distance, check_daily_like_limit, save_avatar_with_watermark
 )
@@ -118,7 +118,7 @@ def get_cached_participants(
     return participants_within_distance
 
 
-@app.get("/api/list", response_model=List[Participant])
+@app.get("/api/list", response_model=List[ParticipantResponse])
 def list_participants(
     filter: ParticipantFilter = Depends(),
     current_user_id: int = Depends(get_current_user_id),

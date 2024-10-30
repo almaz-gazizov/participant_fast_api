@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -19,3 +20,19 @@ class ParticipantFilter(BaseModel):
     name: Optional[str] = None
     surname: Optional[str] = None
     max_distance: Optional[float] = None
+
+
+class ParticipantResponse(BaseModel):
+    id: int
+    name: str
+    surname: str
+    email: str
+    gender: str
+    avatar: Optional[str] = None
+    likes: int
+    registration_date: datetime
+    latitude: float
+    longitude: float
+
+    class Config:
+        from_attributes = True
