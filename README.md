@@ -41,7 +41,7 @@ CREATE DATABASE your_database_name;
 ```
 alembic upgrade head
 ```
-6. Запустите локальный сервер:
+7. Запустите локальный сервер:
 ```
 uvicorn app.main:app --reload
 ```
